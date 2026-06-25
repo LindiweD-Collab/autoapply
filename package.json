@@ -1,0 +1,27 @@
+{
+  "name": "techbridge-autoapply",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "scrape": "node scripts/scraper.mjs",
+    "apply": "node scripts/apply.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^8.3.4",
+    "@supabase/supabase-js": "^2.45.4",
+    "astro": "^4.16.6",
+    "groq-sdk": "^0.7.0",
+    "playwright": "^1.48.2",
+    "pdf-parse": "^1.1.1",
+    "axios": "^1.7.7",
+    "cheerio": "^1.0.0",
+    "node-cron": "^3.0.3",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
