@@ -1,0 +1,94 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { requireAuth, getAdminClient } from '../../lib/supabase.js';
+import { PLANS } from '../../lib/paystack.js';
+
+const user = await requireAuth(Astro.request);
+const supabase = getAdminClient();
+
+const { data: sub } = await supabase
+  .from('subscriptions')
+  .select('*')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false })
+  .limit(1)
+  .single();
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('full_name')
+  .eq('user_id', user.id)
+  .single();
+
+const success = Astro.url.searchParams.get('success');
+const error = Astro.url.searchParams.get('error');
+---
+<Layout title="Billing">
+<div style="min-height:100vh;background:var(--gray-50);">
+  <nav style="background:white;border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--brand);"></div>
+      <span style="font-weight:600;font-size:14px;">AutoApply</span>
+    </div>
+    <a href="/dashboard" style="font-size:13px;color:var(--gray-500);">← Back to dashboard</a>
+  </nav>
+
+  <div style="max-width:680px;margin:0 auto;padding:40px 24px;">
+    <h1 style="font-size:20px;font-weight:700;margin-bottom:6px;">Billing & subscription</h1>
+    <p style="font-size:14px;color:var(--gray-500);margin-bottom:28px;">Powered by Paystack · Billed in ZAR</p>
+
+    {success && <div class="alert alert-success">Subscription activated successfully!</div>}
+    {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
+
+    {sub?.status === 'active' && (
+      <div class="card" style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="font-size:15px;font-weight:600;">Current plan</h2>
+          <span class="badge badge-green">Active</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;text-transform:capitalize;margin-bottom:4px;">{sub.plan}</div>
+        <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">
+          R{(sub.price / 100).toFixed(0)}/month · {sub.applies_used} / {sub.applies_limit} applies used this month
+        </div>
+        <div style="background:var(--gray-100);border-radius:20px;height:6px;margin-bottom:8px;">
+          <div style={`background:var(--brand);height:6px;border-radius:20px;width:${Math.min(100, (sub.applies_used / sub.applies_limit) * 100).toFixed(0)}%`}></div>
+        </div>
+        <div style="font-size:12px;color:var(--gray-400);">Resets on {sub.next_billing ? new Date(sub.next_billing).toLocaleDateString('en-ZA') : '—'}</div>
+        {sub.paystack_subscription_code && (
+          <form method="POST" action="/api/paystack/cancel" style="margin-top:20px;">
+            <input type="hidden" name="subscription_code" value={sub.paystack_subscription_code} />
+            <input type="hidden" name="email_token" value={sub.paystack_email_token} />
+            <button class="btn btn-outline" style="font-size:13px;color:var(--danger);border-color:var(--danger);">Cancel subscription</button>
+          </form>
+        )}
+      </div>
+    )}
+
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:16px;">{sub?.status === 'active' ? 'Upgrade or change plan' : 'Choose a plan'}</h2>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      {Object.entries(PLANS).map(([key, plan]) => (
+        <div class="card" style={key === 'professional' ? 'border:2px solid var(--brand);position:relative;' : ''}>
+          {key === 'professional' && <div class="badge badge-blue" style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;">Most popular</div>}
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">{plan.name.replace('AutoApply ', '')}</div>
+          <div style="font-size:24px;font-weight:700;margin:8px 0 4px;">
+            R{(plan.amount / 100).toFixed(0)}<span style="font-size:13px;font-weight:400;color:var(--gray-400)">/mo</span>
+          </div>
+          <div style="font-size:12px;color:var(--gray-400);margin-bottom:16px;">{plan.applies_limit >= 9999 ? 'Unlimited' : plan.applies_limit} applies/month</div>
+          <form method="POST" action="/api/paystack/subscribe">
+            <input type="hidden" name="plan" value={key} />
+            <input type="hidden" name="email" value={user.email} />
+            <button type="submit" class={`btn ${key === 'professional' ? 'btn-primary' : 'btn-outline'}`} style="width:100%;justify-content:center;font-size:13px;">
+              {sub?.status === 'active' && sub.plan === key ? '✓ Current plan' : 'Subscribe with Paystack'}
+            </button>
+          </form>
+        </div>
+      ))}
+    </div>
+
+    <p style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:20px;">
+      Secure payments via Paystack · All major SA cards accepted · Cancel any time
+    </p>
+  </div>
+</div>
+</Layout>
