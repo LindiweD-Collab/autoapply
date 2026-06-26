@@ -1,0 +1,100 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="AutoApply — Apply to SA jobs while you sleep">
+  <nav style="background:white;border-bottom:1px solid var(--gray-200);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:50;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--brand);"></div>
+      <span style="font-weight:600;font-size:15px;">AutoApply</span>
+      <span style="font-size:12px;color:var(--gray-400);margin-left:4px;">by TechBridge</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <a href="/auth/login" class="btn btn-outline">Sign in</a>
+      <a href="/auth/register" class="btn btn-primary">Get started free</a>
+    </div>
+  </nav>
+
+  <section style="max-width:680px;margin:80px auto;padding:0 24px;text-align:center;">
+    <div class="badge badge-blue" style="margin-bottom:20px;">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--brand);display:inline-block;"></span>
+      Now live · South Africa
+    </div>
+    <h1 style="font-size:48px;font-weight:700;line-height:1.1;letter-spacing:-1.5px;margin-bottom:20px;">
+      Apply to 50 jobs<br />while you <span style="color:var(--brand);">sleep.</span>
+    </h1>
+    <p style="font-size:18px;color:var(--gray-500);line-height:1.7;margin-bottom:40px;max-width:520px;margin-left:auto;margin-right:auto;">
+      Upload your CV once. AutoApply scans Careers24, PNet, and LinkedIn daily — and applies for you, with AI-written cover letters and proof of every submission.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;">
+      <a href="/auth/register" class="btn btn-primary" style="font-size:16px;padding:12px 28px;">Start applying for free</a>
+      <a href="#how" class="btn btn-outline" style="font-size:16px;padding:12px 28px;">See how it works</a>
+    </div>
+    <p style="font-size:13px;color:var(--gray-400);">No credit card needed · 5 free applies to start</p>
+  </section>
+
+  <section style="max-width:680px;margin:0 auto 80px;padding:0 24px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
+      <div class="card" style="padding:20px;">
+        <div style="font-size:28px;font-weight:700;color:var(--brand);">50+</div>
+        <div style="font-size:13px;color:var(--gray-500);">Jobs applied daily</div>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div style="font-size:28px;font-weight:700;color:var(--brand);">80%</div>
+        <div style="font-size:13px;color:var(--gray-500);">Match threshold</div>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div style="font-size:28px;font-weight:700;color:var(--brand);">R149</div>
+        <div style="font-size:13px;color:var(--gray-500);">Starting / month</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="max-width:680px;margin:0 auto 80px;padding:0 24px;">
+    <h2 style="font-size:24px;font-weight:700;margin-bottom:32px;text-align:center;">How AutoApply works</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      {[
+        { icon: '📄', title: 'Upload your CV', body: 'Groq AI parses your skills, titles, and preferences in seconds. No manual form filling.' },
+        { icon: '🎯', title: 'Set your filters', body: 'Salary, location, work type, job boards. We only show you matches above 80% relevance.' },
+        { icon: '🤖', title: 'We apply for you', body: 'Playwright fills forms across Careers24, PNet, and LinkedIn with a tailored cover letter per role.' },
+        { icon: '📊', title: 'Track everything', body: 'Screenshot proof of every submission. See status, match score, and interview requests in one dashboard.' },
+      ].map(step => (
+        <div class="card">
+          <div style="font-size:24px;margin-bottom:10px;">{step.icon}</div>
+          <h3 style="font-size:15px;font-weight:600;margin-bottom:6px;">{step.title}</h3>
+          <p style="font-size:13px;color:var(--gray-500);line-height:1.6;">{step.body}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section id="pricing" style="max-width:680px;margin:0 auto 80px;padding:0 24px;">
+    <h2 style="font-size:24px;font-weight:700;margin-bottom:8px;text-align:center;">Straightforward pricing</h2>
+    <p style="text-align:center;color:var(--gray-500);font-size:14px;margin-bottom:32px;">Cancel any time. No hidden fees.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      {[
+        { key:'starter', name:'Starter', price:'R149', limit:'50 applies/mo', features:['1 job board','Match dashboard','Screenshot proof'], featured:false },
+        { key:'professional', name:'Professional', price:'R299', limit:'150 applies/mo', features:['3 job boards (C24 + PNet + LI)','AI cover letters','Priority support'], featured:true },
+        { key:'agency', name:'Agency', price:'R999', limit:'Unlimited · 20+ candidates', features:['NPC / recruiter plan','Bulk CV import','Analytics dashboard'], featured:false },
+      ].map(plan => (
+        <div class="card" style={plan.featured ? 'border:2px solid var(--brand);position:relative;' : ''}>
+          {plan.featured && <div class="badge badge-blue" style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;">Most popular</div>}
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">{plan.name}</div>
+          <div style="font-size:26px;font-weight:700;margin:8px 0 4px;">{plan.price}<span style="font-size:13px;font-weight:400;color:var(--gray-400)">/mo</span></div>
+          <div style="font-size:12px;color:var(--gray-400);margin-bottom:16px;">{plan.limit}</div>
+          <ul style="list-style:none;font-size:13px;color:var(--gray-500);margin-bottom:20px;">
+            {plan.features.map(f => <li style="padding:3px 0;display:flex;gap:6px;align-items:flex-start;">✓ {f}</li>)}
+          </ul>
+          <a href={`/auth/register?plan=${plan.key}`} class={`btn ${plan.featured ? 'btn-primary' : 'btn-outline'}`} style="width:100%;justify-content:center;">Get started</a>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid var(--gray-200);padding:32px;text-align:center;color:var(--gray-400);font-size:13px;">
+    <div style="margin-bottom:12px;">
+      <span style="font-weight:600;color:var(--gray-700);">AutoApply</span> by TechBridge Innovations ·
+      <a href="mailto:info@techbridgeinnovations.co.za" style="color:var(--gray-400);">info@techbridgeinnovations.co.za</a>
+    </div>
+    <div>© 2025 TechBridge Innovations (Pty) Ltd · Johannesburg, South Africa</div>
+  </footer>
+</Layout>
