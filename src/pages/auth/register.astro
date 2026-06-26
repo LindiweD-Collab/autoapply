@@ -1,52 +1,44 @@
-import { supabase, getAdminClient } from '../../../lib/supabase.js';
+---
+import Layout from '../../layouts/Layout.astro';
 
-export async function POST({ request }) {
-  const form = await request.formData();
-  const email = form.get('email')?.toString().trim();
-  const password = form.get('password')?.toString();
-  const full_name = form.get('full_name')?.toString().trim();
-  const plan = form.get('plan')?.toString() || 'starter';
+const plan = Astro.url.searchParams.get('plan') || 'starter';
+const error = Astro.url.searchParams.get('error');
+---
+<Layout title="Create account">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div style="width:100%;max-width:400px;">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--brand);"></div>
+          <span style="font-weight:600;">AutoApply</span>
+        </div>
+        <h1 style="font-size:22px;font-weight:700;">Create your account</h1>
+        <p style="color:var(--gray-500);font-size:14px;margin-top:6px;">Start with 5 free applies. No card needed.</p>
+      </div>
 
-  if (!email || !password || !full_name) {
-    return Response.redirect(new URL(`/auth/register?error=${encodeURIComponent('All fields are required')}`, request.url), 302);
-  }
+      {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
-
-  if (error) {
-    return Response.redirect(new URL(`/auth/register?error=${encodeURIComponent(error.message)}`, request.url), 302);
-  }
-
-  // Create a starter profile
-  const admin = getAdminClient();
-  await admin.from('profiles').insert({
-    user_id: data.user.id,
-    full_name,
-    location: '',
-    auto_apply_enabled: false,
-  });
-
-  // Give them 5 free applies (freemium)
-  await admin.from('subscriptions').insert({
-    user_id: data.user.id,
-    plan: 'free',
-    price: 0,
-    applies_limit: 5,
-    applies_used: 0,
-    start_date: new Date().toISOString().split('T')[0],
-    status: 'active',
-  });
-
-  // Sign them in immediately
-  const { data: session } = await supabase.auth.signInWithPassword({ email, password });
-
-  const redirectUrl = plan !== 'starter' ? `/dashboard/billing?plan=${plan}` : '/dashboard/profile';
-
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: redirectUrl,
-      'Set-Cookie': `sb-access-token=${session.session.access_token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`,
-    },
-  });
-}
+      <div class="card">
+        <form method="POST" action="/api/auth/register">
+          <input type="hidden" name="plan" value={plan} />
+          <div class="form-group">
+            <label for="full_name">Full name</label>
+            <input id="full_name" name="full_name" type="text" placeholder="Lindiwe Dube" required />
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Min 8 characters" minlength="8" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Create account</button>
+        </form>
+      </div>
+      <p style="text-align:center;font-size:13px;color:var(--gray-500);margin-top:16px;">
+        Already have an account? <a href="/auth/login">Sign in</a>
+      </p>
+    </div>
+  </div>
+</Layout>
