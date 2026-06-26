@@ -1,0 +1,159 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { requireAuth, getAdminClient } from '../../lib/supabase.js';
+
+const user = await requireAuth(Astro.request);
+const supabase = getAdminClient();
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('user_id', user.id)
+  .single();
+
+const success = Astro.url.searchParams.get('success');
+const error = Astro.url.searchParams.get('error');
+---
+<Layout title="Your profile">
+<div style="min-height:100vh;background:var(--gray-50);">
+  <nav style="background:white;border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--brand);"></div>
+      <span style="font-weight:600;font-size:14px;">AutoApply</span>
+    </div>
+    <a href="/dashboard" style="font-size:13px;color:var(--gray-500);">← Back to dashboard</a>
+  </nav>
+
+  <div style="max-width:640px;margin:0 auto;padding:40px 24px;">
+    <h1 style="font-size:20px;font-weight:700;margin-bottom:6px;">Profile & CV</h1>
+    <p style="font-size:14px;color:var(--gray-500);margin-bottom:28px;">Upload your CV and we'll auto-fill your profile using AI.</p>
+
+    {success && <div class="alert alert-success">Profile updated successfully.</div>}
+    {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
+
+    <!-- CV Upload -->
+    <div class="card" style="margin-bottom:20px;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Upload CV (PDF)</h2>
+      <form method="POST" action="/api/profile/upload-cv" enctype="multipart/form-data">
+        <div style="border:2px dashed var(--gray-200);border-radius:var(--radius);padding:32px;text-align:center;margin-bottom:16px;cursor:pointer;" id="drop-zone">
+          <div style="font-size:24px;margin-bottom:8px;">📄</div>
+          <p style="font-size:14px;font-weight:500;">Drop your CV here or click to browse</p>
+          <p style="font-size:12px;color:var(--gray-400);margin-top:4px;">PDF only · Max 5MB</p>
+          <input type="file" name="cv" accept=".pdf" required style="width:100%;height:100%;opacity:0;position:absolute;top:0;left:0;cursor:pointer;" id="cv-input" />
+        </div>
+        <div id="file-name" style="font-size:13px;color:var(--gray-500);margin-bottom:12px;display:none;"></div>
+        <button type="submit" class="btn btn-primary" id="upload-btn" style="width:100%;justify-content:center;">
+          Parse CV with AI
+        </button>
+      </form>
+    </div>
+
+    <!-- Manual profile form -->
+    <div class="card">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Profile details</h2>
+      <form method="POST" action="/api/profile/update">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label>Full name</label>
+            <input name="full_name" type="text" value={profile?.full_name || ''} placeholder="Your full name" required />
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input name="phone" type="tel" value={profile?.phone || ''} placeholder="+27 82 123 4567" />
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input name="location" type="text" value={profile?.location || ''} placeholder="Johannesburg, Gauteng" required />
+          </div>
+          <div class="form-group">
+            <label>Current job title</label>
+            <input name="current_title" type="text" value={profile?.current_title || ''} placeholder="Software Developer" />
+          </div>
+          <div class="form-group">
+            <label>Years of experience</label>
+            <input name="years_experience" type="number" min="0" max="40" value={profile?.years_experience || ''} placeholder="5" />
+          </div>
+          <div class="form-group">
+            <label>Work type preference</label>
+            <select name="work_type">
+              <option value="any" selected={profile?.work_type === 'any'}>Any</option>
+              <option value="remote" selected={profile?.work_type === 'remote'}>Remote</option>
+              <option value="hybrid" selected={profile?.work_type === 'hybrid'}>Hybrid</option>
+              <option value="on-site" selected={profile?.work_type === 'on-site'}>On-site</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Min salary (ZAR / month)</label>
+            <input name="salary_min" type="number" value={profile?.salary_min || ''} placeholder="25000" />
+          </div>
+          <div class="form-group">
+            <label>Max salary (ZAR / month)</label>
+            <input name="salary_max" type="number" value={profile?.salary_max || ''} placeholder="60000" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Skills (comma-separated)</label>
+          <input name="skills" type="text" value={profile?.skills_array?.join(', ') || ''} placeholder="React, Node.js, AWS, Python, SQL" />
+        </div>
+
+        <div class="form-group">
+          <label>Job titles you're targeting</label>
+          <input name="job_titles" type="text" value={profile?.job_titles_sought?.join(', ') || ''} placeholder="Software Developer, Cloud Engineer, Full Stack Dev" />
+        </div>
+
+        <div class="form-group">
+          <label>Job boards to use</label>
+          <div style="display:flex;gap:16px;margin-top:6px;">
+            {['careers24','pnet','linkedin'].map(board => (
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+                <input type="checkbox" name="boards" value={board}
+                  checked={!profile?.job_boards || profile.job_boards?.includes(board)}
+                  style="width:auto;" />
+                {board.charAt(0).toUpperCase() + board.slice(1)}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" name="auto_apply_enabled" id="auto_apply" value="true"
+            checked={profile?.auto_apply_enabled !== false}
+            style="width:auto;" />
+          <label for="auto_apply" style="font-weight:400;cursor:pointer;margin:0;">Enable auto-apply (bot applies automatically to matches above 80%)</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Save profile</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const input = document.getElementById('cv-input');
+const nameEl = document.getElementById('file-name');
+const dropZone = document.getElementById('drop-zone');
+
+input?.addEventListener('change', () => {
+  if (input.files[0]) {
+    nameEl.textContent = `Selected: ${input.files[0].name}`;
+    nameEl.style.display = 'block';
+  }
+});
+
+dropZone?.addEventListener('click', () => input?.click());
+dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--brand)'; });
+dropZone?.addEventListener('dragleave', () => dropZone.style.borderColor = 'var(--gray-200)');
+dropZone?.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--gray-200)';
+  if (e.dataTransfer.files[0]) {
+    const dt = new DataTransfer();
+    dt.items.add(e.dataTransfer.files[0]);
+    input.files = dt.files;
+    nameEl.textContent = `Selected: ${e.dataTransfer.files[0].name}`;
+    nameEl.style.display = 'block';
+  }
+});
+</script>
+</Layout>
