@@ -1,0 +1,177 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { requireAuth, getAdminClient } from '../../lib/supabase.js';
+
+const user = await requireAuth(Astro.request);
+const supabase = getAdminClient();
+
+// Fetch profile
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('user_id', user.id)
+  .single();
+
+// If no profile yet, redirect to onboarding
+if (!profile) return Astro.redirect('/dashboard/onboarding');
+
+// Fetch subscription
+const { data: sub } = await supabase
+  .from('subscriptions')
+  .select('*')
+  .eq('user_id', user.id)
+  .eq('status', 'active')
+  .single();
+
+// Fetch applications with job details
+const { data: applications } = await supabase
+  .from('applications')
+  .select('*, jobs(*)')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false })
+  .limit(50);
+
+// Stats
+const stats = {
+  total: applications?.length || 0,
+  applied: applications?.filter(a => a.status === 'applied').length || 0,
+  pending: applications?.filter(a => a.status === 'pending').length || 0,
+  failed: applications?.filter(a => a.status === 'failed').length || 0,
+  interviews: applications?.filter(a => a.status === 'interview').length || 0,
+};
+---
+<Layout title="Dashboard">
+<div style="min-height:100vh;background:var(--gray-50);">
+
+  <!-- Nav -->
+  <nav style="background:white;border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--brand);"></div>
+      <span style="font-weight:600;font-size:14px;">AutoApply</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <a href="/dashboard/profile" style="font-size:13px;color:var(--gray-500);">Profile & CV</a>
+      <a href="/dashboard/billing" style="font-size:13px;color:var(--gray-500);">Billing</a>
+      <a href="/api/auth/logout" style="font-size:13px;color:var(--gray-500);">Sign out</a>
+    </div>
+  </nav>
+
+  <div style="max-width:900px;margin:0 auto;padding:32px 24px;">
+
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;">Your applications</h1>
+        <p style="font-size:13px;color:var(--gray-400);margin-top:2px;">
+          {sub ? `${sub.applies_limit - sub.applies_used} applies remaining this month` : 'No active plan'}
+        </p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        {profile.auto_apply_enabled !== false ? (
+          <form method="POST" action="/api/autoapply/toggle">
+            <input type="hidden" name="enabled" value="false" />
+            <button class="btn btn-outline" style="font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;"></span>
+              Auto-apply on
+            </button>
+          </form>
+        ) : (
+          <form method="POST" action="/api/autoapply/toggle">
+            <input type="hidden" name="enabled" value="true" />
+            <button class="btn btn-outline" style="font-size:13px;display:flex;align-items:center;gap:6px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--gray-400);display:inline-block;"></span>
+              Auto-apply off
+            </button>
+          </form>
+        )}
+        <a href="/dashboard/profile" class="btn btn-primary" style="font-size:13px;">Update CV</a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;">
+      {[
+        { label: 'Total applied', value: stats.applied, color: 'var(--brand)' },
+        { label: 'Pending', value: stats.pending, color: 'var(--warning)' },
+        { label: 'Interviews', value: stats.interviews, color: 'var(--success)' },
+        { label: 'Failed', value: stats.failed, color: 'var(--danger)' },
+        { label: 'Applies left', value: sub ? sub.applies_limit - sub.applies_used : '—', color: 'var(--gray-700)' },
+      ].map(s => (
+        <div class="card" style="padding:16px;text-align:center;">
+          <div style={`font-size:24px;font-weight:700;color:${s.color};`}>{s.value}</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">{s.label}</div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Applications table -->
+    {!sub && (
+      <div class="alert alert-error" style="margin-bottom:20px;">
+        No active subscription. <a href="/dashboard/billing">Choose a plan</a> to enable auto-apply.
+      </div>
+    )}
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:14px;font-weight:600;">Recent matches</span>
+        <div style="display:flex;gap:6px;" id="filter-row">
+          {['all','applied','pending','failed'].map(f => (
+            <button onclick={`filterApps('${f}')`} class={`badge ${f === 'all' ? 'badge-blue' : ''}`} style="cursor:pointer;border:none;background:var(--gray-100);color:var(--gray-500);" id={`filter-${f}`}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+          ))}
+        </div>
+      </div>
+
+      {!applications?.length ? (
+        <div style="padding:48px;text-align:center;color:var(--gray-400);">
+          <div style="font-size:32px;margin-bottom:12px;">🔍</div>
+          <p style="font-size:14px;">No matches yet. Make sure your profile and CV are complete.</p>
+          <a href="/dashboard/profile" class="btn btn-primary" style="margin-top:16px;">Complete your profile</a>
+        </div>
+      ) : (
+        <div id="app-list">
+          {applications.map(app => (
+            <div class="app-row" data-status={app.status} style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--gray-100);transition:background 0.1s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='white'">
+              <div style="width:36px;height:36px;border-radius:var(--radius);background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--gray-500);flex-shrink:0;">
+                {(app.jobs?.company || 'Co').slice(0, 2).toUpperCase()}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{app.jobs?.title}</div>
+                <div style="font-size:12px;color:var(--gray-400);margin-top:1px;">{app.jobs?.company} · {app.jobs?.location} · {app.jobs?.source}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                <span class={`badge ${app.match_score >= 88 ? 'badge-green' : 'badge-amber'}`}>{app.match_score}% match</span>
+                <span class={`badge ${
+                  app.status === 'applied' ? 'badge-blue' :
+                  app.status === 'pending' ? 'badge-amber' :
+                  app.status === 'interview' ? 'badge-green' : 'badge-red'
+                }`}>{app.status}</span>
+                {app.proof_screenshot_url && (
+                  <a href={app.proof_screenshot_url} target="_blank" style="font-size:12px;color:var(--gray-400);">View proof</a>
+                )}
+                {app.jobs?.url && (
+                  <a href={app.jobs.url} target="_blank" style="font-size:12px;color:var(--brand);">View job</a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+
+<script>
+function filterApps(filter) {
+  document.querySelectorAll('.app-row').forEach(row => {
+    row.style.display = (filter === 'all' || row.dataset.status === filter) ? 'flex' : 'none';
+  });
+  document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+    btn.className = 'badge';
+    btn.style.background = 'var(--gray-100)';
+    btn.style.color = 'var(--gray-500)';
+  });
+  const active = document.getElementById(`filter-${filter}`);
+  if (active) { active.className = 'badge badge-blue'; active.style.background = ''; active.style.color = ''; }
+}
+</script>
+</Layout>
